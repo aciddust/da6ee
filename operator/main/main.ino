@@ -16,7 +16,7 @@
 #include <SPI.h>
 #include <EtherCard.h>
 #include <Wire.h>
-#include <Adafruit_NeoPixel.h>
+//#include <Adafruit_NeoPixel.h>
 
 // 트위터 API 이용을 위해 OAUTH 토큰값을 넣는다. (트위터 ID/패스워드 필요)
 // http://arduino-tweet.appspot.com/oauth/twitter/login 여기에서 트위터 로그인하고 토큰발급 받는다.
@@ -39,7 +39,7 @@ const int BH1750_address = 0x23;
 byte luxBuf[2];
 
 //LED INIT
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
+//Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
 boolean ledStatus;
 boolean waterFeed;
 boolean doorOpen;
@@ -206,18 +206,17 @@ void loop () {
       waterFeed = true;
     }
     
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
+      Serial.println("[WATER]: Received OFF command");
+      waterFeed = false;
+    }
+    
     if(ledStatus) {
-      for(int i=0;i<NUMPIXELS;i++){
-        pixels.setPixelColor(i, pixels.Color(255,255,255));
-        pixels.show();
-      }
+      digitalWrite(6, HIGH);
       LED_statusLabel = on;
       LED_buttonLabel = off;
     } else {
-      for(int i=0;i<NUMPIXELS;i++){
-        pixels.setPixelColor(i, pixels.Color(0,0,0));
-        pixels.show();
-      }
+      digitalWrite(6, LOW);
       LED_statusLabel = off;
       LED_buttonLabel = on;
     }
@@ -234,14 +233,12 @@ void loop () {
 
     if(waterFeed) {
       water_servo.write(120);
-   // WATER_statusLabel = off;
-      WATER_buttonLabel = on;
-      delay(500);
-      waterFeed = false;           
+      WATER_statusLabel = on;
+      WATER_buttonLabel = off;
+    } else {
       water_servo.write(1);
-    }
-    else {
-    ;
+      WATER_statusLabel = off;
+      WATER_buttonLabel = on;
     }
     
     BufferFiller bfill = ether.tcpOffset();
