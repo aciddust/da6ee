@@ -38,9 +38,14 @@ byte luxBuf[2];
 
 //LED INIT
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
-bool state_red = false;
-bool state_blu = false;
-bool state_grn = false;
+boolean state_red = false;
+boolean state_blu = false;
+boolean state_grn = false;
+boolean ledStatus;
+char* on = "ON";
+char* off = "OFF";
+char* statusLabel;
+char* buttonLabel;
 
 // ethernet interface mac address, must be unique on the LAN
 byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
@@ -49,25 +54,6 @@ const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
 byte Ethernet::buffer[700];
 Stash stash;
-
-const char index_page[] PROGMEM =
-"HTTP/1.0 503 Service Unavailable\r\n"
-"Content-Type: text/html\r\n"
-"Retry-After: 600\r\n"
-"\r\n"
-"<html>"
-  "<head><title>"
-    "아두이노 웹서버 입니다."
-  "</title></head>"
-  "<body>"
-    "<h3>다육이 키우기</h3>"
-    "<p><em>"
-      "어떤 작업을 수행하실건가요?.<br />"
-      "아직은 준비중입니다."
-    "</em></p>"
-  "</body>"
-"</html>"
-;
 
 void BH1750_Init(int address){
   
@@ -163,7 +149,7 @@ void loop () {
     Serial.println("Got a response!");
     Serial.println(reply);
   }
-/*
+
   // 조도 측정
   float valf = 0;
   if(BH1750_Read(BH1750_address)==2){
@@ -174,13 +160,47 @@ void loop () {
     
     Serial.println(" lx"); 
   }
-*/
-  //웹브라우저의 요청이 들어왔을 경우 page 의 내용을 보내줌
-  // wait for an incoming TCP packet, but ignore its contents
-  if (ether.packetLoop(ether.packetReceive())) {
-    memcpy_P(ether.tcpOffset(), index_page, sizeof index_page);
-    ether.httpServerReply(sizeof index_page - 1);
-  }
 
+  word len = ether.packetReceive();
+  word pos = ether.packetLoop(len);
+
+  if(pos) {
+    
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?status=ON") != 0) {
+      Serial.println("Received ON command");
+      ledStatus = true;
+    }
+
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?status=OFF") != 0) {
+      Serial.println("Received OFF command");
+      ledStatus = false;
+    }
+
+    if(ledStatus) {
+      for(int i=0;i<NUMPIXELS;i++){
+        pixels.setPixelColor(i, pixels.Color(255,255,255));
+        pixels.show();
+      }
+      statusLabel = on;
+      buttonLabel = off;
+    } else {
+      for(int i=0;i<NUMPIXELS;i++){
+        pixels.setPixelColor(i, pixels.Color(0,0,0));
+        pixels.show();
+      }
+      statusLabel = off;
+      buttonLabel = on;
+    }
+
+    BufferFiller bfill = ether.tcpOffset();
+    bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
+      "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
+      "<html><head><title>WebLed</title></head>"
+      "<body>LED Status: $S "
+      "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a>"
+      "</body></html>"      
+      ), statusLabel, buttonLabel, buttonLabel);
+    ether.httpServerReply(bfill.position());
+  }
 }
 
