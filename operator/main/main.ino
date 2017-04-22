@@ -52,14 +52,13 @@ char* DOOR_statusLabel;
 char* DOOR_buttonLabel;
 
 char* WATER_statusLabel;
+char* WATER_buttonLabel;
 
 char* on = "ON";
 char* off = "OFF";
 
- 
-
-Servo door_servo;
-Servo water_servo;
+Servo door_servo;  // #define PIN_SERVO    9
+Servo water_servo; // #define PIN_SERVO_2 10
 
 int pos = 0;
 
@@ -118,13 +117,8 @@ static void sendToTwitter (const char *tweet) {
  
 void setup () {
 
-#if defined (__AVR_ATtiny85__)
-    if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
-#endif
-
 // GPIO -set
   pinMode(RGB_LED, OUTPUT);
-  pinMode(PIN_SERVO, OUTPUT);
   pinMode(PANNEL, OUTPUT);
   pinMode(FAN_A, OUTPUT);
   pinMode(FAN_B, OUTPUT);
@@ -198,21 +192,20 @@ void loop () {
     }
 
     if(strstr((char *)Ethernet::buffer + pos, "GET /?door=ON") != 0) {
-      Serial.println("[DOOR]: Received OPEN command");
+      Serial.println("[DOOR]: Received ON command");
       doorOpen = true;
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?door=OFF") != 0) {
-      Serial.println("[DOOR]: Received CLOSE command");
+      Serial.println("[DOOR]: Received OFF command");
       doorOpen = false;
     }
 
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
-      Serial.println("[WATER]: Received FEED command");
+      Serial.println("[WATER]: Received ON command");
       waterFeed = true;
     }
     
-
     if(ledStatus) {
       for(int i=0;i<NUMPIXELS;i++){
         pixels.setPixelColor(i, pixels.Color(255,255,255));
@@ -241,31 +234,35 @@ void loop () {
 
     if(waterFeed) {
       water_servo.write(120);
-      WATER_statusLabel = on;
-      delay(1000);
-      WATER_statusLabel = off;
-      water_servo.write(1);      
+   // WATER_statusLabel = off;
+      WATER_buttonLabel = on;
+      delay(500);
+      waterFeed = false;           
+      water_servo.write(1);
+    }
+    else {
+    ;
     }
     
-
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
       "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
       "<html>"
-        "<head><title>WebLed</title></head>"
+        "<head>"
+          "<title>Da6eE</title>"
+        "</head>"
         "<body>"
-          "내부 조명 상태 : $S "
+          "Light Status : $S "
             "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "온실 개방 상태 : $S "
+          "Door Status : $S "
             "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "물을 주시겠습니까? : "
+          "Watering? : _LAST TIME : [$S] "
             "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a> <br>"
-         
-      "</body></html>"      
+            "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
-         WATER_statusLabel);
+         WATER_buttonLabel, WATER_buttonLabel);
+
     ether.httpServerReply(bfill.position());
   }
 }
-
