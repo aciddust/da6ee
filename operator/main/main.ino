@@ -40,10 +40,11 @@ byte luxBuf[2];
 
 //LED INIT
 //Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
-boolean ledStatus;
-boolean waterFeed;
-boolean doorOpen;
-boolean fanWork;
+boolean ledStatus = false;
+boolean waterFeed = false;
+boolean doorOpen = false;
+boolean fanWork = false;
+boolean dummy = false;
 
 char* LED_statusLabel;
 char* LED_buttonLabel;
@@ -239,7 +240,10 @@ void loop () {
       water_servo.write(1);
       WATER_statusLabel = off;
       WATER_buttonLabel = on;
-    }
+    }  
+    
+    if(dummy){;}
+    else{;}
     
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
