@@ -12,6 +12,7 @@
 //  WARNING: Don't send more than 1 tweet per minute! (1분에 1개 이상의 트위터를 보내지 마시오)
 //  NOTE: Twitter rejects tweets with identical content as dupes (returns 403)
 */
+#include <Servo.h>
 #include <SPI.h>
 #include <EtherCard.h>
 #include <Wire.h>
@@ -46,6 +47,11 @@ char* on = "ON";
 char* off = "OFF";
 char* statusLabel;
 char* buttonLabel;
+
+ 
+
+Servo myservo;
+int pos = 0;
 
 // ethernet interface mac address, must be unique on the LAN
 byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
@@ -118,6 +124,9 @@ void setup () {
   Wire.begin();
   BH1750_Init(BH1750_address);
 
+// init Servo
+  myservo.attach(PIN_SERVO);
+
 //Serial Begin..
   Serial.begin(57600);
   
@@ -180,6 +189,8 @@ void loop () {
       for(int i=0;i<NUMPIXELS;i++){
         pixels.setPixelColor(i, pixels.Color(255,255,255));
         pixels.show();
+
+        myservo.write(180);
       }
       statusLabel = on;
       buttonLabel = off;
@@ -187,6 +198,8 @@ void loop () {
       for(int i=0;i<NUMPIXELS;i++){
         pixels.setPixelColor(i, pixels.Color(0,0,0));
         pixels.show();
+
+        myservo.write(0);
       }
       statusLabel = off;
       buttonLabel = on;
@@ -195,11 +208,18 @@ void loop () {
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
       "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
-      "<html><head><title>WebLed</title></head>"
-      "<body>LED Status: $S "
-      "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a>"
+      "<html>"
+        "<head><title>WebLed</title></head>"
+        "<body>"
+          "LED Status: $S "
+            "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
+          "Door OPEN: $S "
+            "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
+         
       "</body></html>"      
-      ), statusLabel, buttonLabel, buttonLabel);
+      ), statusLabel, buttonLabel, buttonLabel,
+         statusLabel, buttonLabel, buttonLabel
+         );
     ether.httpServerReply(bfill.position());
   }
 }
