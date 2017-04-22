@@ -23,34 +23,44 @@
 #define TOKEN   "853890302473453568-4jK5BilQKcP0zsYbf795HDwxpXEzRTb"
 
 // tri-coloring LED [Need PWM Control _OR NOT] 
-#define RGB_LED   6
+#define RGB_LED     6
 #define NUMPIXELS   7
 // servoMotor [Need PWM Control]
-#define PIN_SERVO 9
+#define PIN_SERVO   9
+#define PIN_SERVO_2 10
 // LED_PANNEL [Need PWM Control]
-#define PANNEL    5
+#define PANNEL      5
 // FAN [true: GO THROUGH / false: REVERSE] _ maybe need motorDriver
-#define FAN_A     4
-#define FAN_B     3
+#define FAN_A       4
+#define FAN_B       3
 // Get Lux, Humidity
-#define GetHum    A0
+#define GetHum      A0
 const int BH1750_address = 0x23;
 byte luxBuf[2];
 
 //LED INIT
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
-boolean state_red = false;
-boolean state_blu = false;
-boolean state_grn = false;
 boolean ledStatus;
+boolean waterFeed;
+boolean doorOpen;
+boolean fanWork;
+
+char* LED_statusLabel;
+char* LED_buttonLabel;
+
+char* DOOR_statusLabel;
+char* DOOR_buttonLabel;
+
+char* WATER_statusLabel;
+
 char* on = "ON";
 char* off = "OFF";
-char* statusLabel;
-char* buttonLabel;
 
  
 
-Servo myservo;
+Servo door_servo;
+Servo water_servo;
+
 int pos = 0;
 
 // ethernet interface mac address, must be unique on the LAN
@@ -125,7 +135,8 @@ void setup () {
   BH1750_Init(BH1750_address);
 
 // init Servo
-  myservo.attach(PIN_SERVO);
+  water_servo.attach(PIN_SERVO);
+  door_servo.attach(PIN_SERVO_2);
 
 //Serial Begin..
   Serial.begin(57600);
@@ -145,19 +156,20 @@ void setup () {
   if (!ether.dnsLookup(website))
     Serial.println(F("DNS failed"));
  
-  ether.printIp("SRV: ", ether.hisip);
-  sendToTwitter("[Notice] da6ee operator has came back.");
+ ether.printIp("SRV: ", ether.hisip);
+ // sendToTwitter("[Notice] da6ee operator has came back.");
 }
  
 void loop () {
 
   // 트위터 서버로 부터 받은 결과를 출력
-  ether.packetLoop(ether.packetReceive());
+ /* ether.packetLoop(ether.packetReceive());
   const char* reply = ether.tcpReply(session);
   if (reply != 0) {
     Serial.println("Got a response!");
     Serial.println(reply);
   }
+  */
 
   // 조도 측정
   float valf = 0;
@@ -175,35 +187,66 @@ void loop () {
 
   if(pos) {
     
-    if(strstr((char *)Ethernet::buffer + pos, "GET /?status=ON") != 0) {
-      Serial.println("Received ON command");
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?light=ON") != 0) {
+      Serial.println("[LIGHT]: Received ON command");
       ledStatus = true;
     }
 
-    if(strstr((char *)Ethernet::buffer + pos, "GET /?status=OFF") != 0) {
-      Serial.println("Received OFF command");
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?light=OFF") != 0) {
+      Serial.println("[LIGHT]: Received OFF command");
       ledStatus = false;
     }
+
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?door=ON") != 0) {
+      Serial.println("[DOOR]: Received OPEN command");
+      doorOpen = true;
+    }
+    
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?door=OFF") != 0) {
+      Serial.println("[DOOR]: Received CLOSE command");
+      doorOpen = false;
+    }
+
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
+      Serial.println("[WATER]: Received FEED command");
+      waterFeed = true;
+    }
+    
 
     if(ledStatus) {
       for(int i=0;i<NUMPIXELS;i++){
         pixels.setPixelColor(i, pixels.Color(255,255,255));
         pixels.show();
-
-        myservo.write(180);
       }
-      statusLabel = on;
-      buttonLabel = off;
+      LED_statusLabel = on;
+      LED_buttonLabel = off;
     } else {
       for(int i=0;i<NUMPIXELS;i++){
         pixels.setPixelColor(i, pixels.Color(0,0,0));
         pixels.show();
-
-        myservo.write(0);
       }
-      statusLabel = off;
-      buttonLabel = on;
+      LED_statusLabel = off;
+      LED_buttonLabel = on;
     }
+
+    if(doorOpen) {
+      door_servo.write(120);
+      DOOR_statusLabel = on;
+      DOOR_buttonLabel = off;
+    } else {
+      door_servo.write(1);
+      DOOR_statusLabel = off;
+      DOOR_buttonLabel = on;
+    }
+
+    if(waterFeed) {
+      water_servo.write(120);
+      WATER_statusLabel = on;
+      delay(1000);
+      WATER_statusLabel = off;
+      water_servo.write(1);      
+    }
+    
 
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
@@ -211,15 +254,17 @@ void loop () {
       "<html>"
         "<head><title>WebLed</title></head>"
         "<body>"
-          "LED Status: $S "
-            "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "Door OPEN: $S "
-            "<a href=\"/?status=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
+          "내부 조명 상태 : $S "
+            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
+          "온실 개방 상태 : $S "
+            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
+          "물을 주시겠습니까? : "
+            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a> <br>"
          
       "</body></html>"      
-      ), statusLabel, buttonLabel, buttonLabel,
-         statusLabel, buttonLabel, buttonLabel
-         );
+      ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
+         DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
+         WATER_statusLabel);
     ether.httpServerReply(bfill.position());
   }
 }
