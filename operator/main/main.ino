@@ -58,6 +58,8 @@ char* WATER_buttonLabel;
 char* on = "ON";
 char* off = "OFF";
 
+unsigned long prev_time;
+
 Servo door_servo;  // #define PIN_SERVO    9
 Servo water_servo; // #define PIN_SERVO_2 10
 
@@ -180,6 +182,8 @@ void loop () {
   word len = ether.packetReceive();
   word pos = ether.packetLoop(len);
 
+  unsigned long prev_time=0;
+  unsigned long current_time;
   if(pos) {
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?light=ON") != 0) {
@@ -205,12 +209,20 @@ void loop () {
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
       Serial.println("[WATER]: Received ON command");
       waterFeed = true;
+      water_servo.write(120);
+      delay(1000);
+      water_servo.write(1);
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
       Serial.println("[WATER]: Received OFF command");
       waterFeed = false;
+      water_servo.write(120);
+      delay(1000);
+      water_servo.write(1);
     }
+
+    
     
     if(ledStatus) {
       digitalWrite(6, HIGH);
@@ -233,15 +245,14 @@ void loop () {
     }
 
     if(waterFeed) {
-      water_servo.write(120);
       WATER_statusLabel = on;
       WATER_buttonLabel = off;
     } else {
-      water_servo.write(1);
       WATER_statusLabel = off;
       WATER_buttonLabel = on;
     }  
-    
+   
+   
     if(dummy){;}
     else{;}
     
