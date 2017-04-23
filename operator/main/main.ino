@@ -265,17 +265,48 @@ void loop () {
           "<title>Da6eE</title>"
         "</head>"
         "<body>"
-          "내부 조명 상태 : $S "
-            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
-          "온실 개방 상태: $S "
-            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
-          "물 줄까요?? : "
-            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>  <br>"
-            "_LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] <br><br>"
-          "주변 환경 : <br>"
-            "조도 : $S &nbsp&nbsp 온도 : $S &nbsp&nbsp <br><br>"
-          "화분 내부 토양 습도 : $S<br>"
-            "</body></html>"            
+          "<table border = \"1\">"
+          
+            "<tr>"
+              "<td>내부 조명 상태</td>"
+              "<td>$S</td>"
+              "<td><a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a></td>"
+            "</tr>"
+          
+            "<tr>"
+              "<td>온실 개방 상태</td>"
+              "<td>$S</td>"
+              "<td><a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a></td>"
+            "</tr>"
+          
+            "<tr>"
+              "<td>물 줄까요??</td>"
+              "<td><a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>"
+            "</tr>"
+
+            "<tr>"
+              "<td>LAST_TIME</td>"
+              "<td>[_RTC 장착 이후 마지막 물준 시간 기록예정_]</td>"  
+            "</tr>"
+          
+          "</table>"   
+          
+          "<table border = \"1\">"
+
+            "<tr>"
+              "<td>주변 환경</td>"
+            "</tr>"
+            
+            "<tr>"
+              "<td>조도 : $S</td>"
+              "<td>온도 : $S</td>"
+            "</tr>"
+            
+            "<tr>"
+              "<td>화분 내부 토양 습도 : $S<td>"
+            "</tr>"
+          "</table>"
+      "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
          WATER_buttonLabel,
