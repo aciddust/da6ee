@@ -268,12 +268,12 @@ void loop () {
             "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
           "Door Status : $S "
             "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "Watering? : _LAST TIME : [$S] "
+          "Watering? : _LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] "
             "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a> <br>"
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
-         WATER_buttonLabel, WATER_buttonLabel);
+         WATER_buttonLabel);
 
     ether.httpServerReply(bfill.position());
   }
