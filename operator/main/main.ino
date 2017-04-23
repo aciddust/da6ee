@@ -261,19 +261,25 @@ void loop () {
       "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
       "<html>"
         "<head>"
+          "<meta charset=\"utf-8\">"
           "<title>Da6eE</title>"
         "</head>"
         "<body>"
-          "Light Status : $S "
-            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "Door Status : $S "
-            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br>"
-          "Watering? : _LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] "
-            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a> <br>"
+          "내부 조명 상태 : $S "
+            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
+          "온실 개방 상태: $S "
+            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
+          "물 줄까요?? : "
+            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>  <br>"
+            "_LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] <br><br>"
+          "주변 환경 : <br>"
+            "조도 : $S &nbsp&nbsp 온도 : $S &nbsp&nbsp <br><br>"
+          "화분 내부 토양 습도 : $S<br>"
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
-         WATER_buttonLabel);
+         WATER_buttonLabel,
+         "_조도_","_온도_","_습도_");
 
     ether.httpServerReply(bfill.position());
   }
