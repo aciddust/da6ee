@@ -33,9 +33,12 @@
 // FAN [true: GO THROUGH / false: REVERSE] _ maybe need motorDriver
 #define FAN_A       4
 #define FAN_B       3
-// Get Lux, Humidity
+// Get Humidity, Celsius
 #define GetHum      A0
-const int BH1750_address = 0x23;
+#define GetTmp      A2
+
+// Get Lux
+const int BH1750_address = 0x23; 
 byte luxBuf[2];
 
 //LED INIT
@@ -126,7 +129,8 @@ void setup () {
   pinMode(FAN_A, OUTPUT);
   pinMode(FAN_B, OUTPUT);
   pinMode(GetHum, INPUT);
-
+  pinMode(GetTmp, INPUT);
+  
 // to get Lux
   Wire.begin();
   BH1750_Init(BH1750_address);
@@ -179,6 +183,16 @@ void loop () {
     Serial.println(" lx"); 
   }
 
+  // 온도 측정 (섭씨기준)
+  int tmp_read = analogRead(GetTmp);
+  float tmp_vcc = tmp_read * 5.0 / 1024.0;
+  float celsiustmp = (tmp_vcc - 0.5) * 100 ; 
+  // float fahrenheittmp= celsiustmp * 9.0/5.0 + 32.0; // 화씨
+
+  // 토양 내부 습도 측정
+  int hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
+
+  //웹 페이지 받을 준비
   word len = ether.packetReceive();
   word pos = ether.packetLoop(len);
 
