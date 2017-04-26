@@ -1,19 +1,11 @@
-// DS1302_Serial_Easy 
-// Copyright (C)2015 Rinky-Dink Electronics, Henning Karlsen. All right reserved
-// web: http://www.RinkyDinkElectronics.com/
-//
-// A quick demo of how to use my DS1302-library to 
-// quickly send time and date information over a serial link
-//
-// I assume you know how to connect the DS1302.
 // DS1302:  CE pin    -> Arduino Digital 2
 //          I/O pin   -> Arduino Digital 3
-//          SCLK pin  -> Arduino Digital 4
+//          SCLK pin  -> Arduino Digital 7
 
 #include <DS1302.h>
 
 // Init the DS1302
-DS1302 rtc(2, 3, 4);
+DS1302 rtc(2, 3, 7);
 
 void setup()
 {
@@ -25,9 +17,11 @@ void setup()
   Serial.begin(9600);
 
   // The following lines can be commented out to use the values already stored in the DS1302
+  /*
   rtc.setDOW(TUESDAY);        // Set Day-of-Week to FRIDAY
-  rtc.setTime(11, 27, 0);     // Set the time to 12:00:00 (24hr format)
+  rtc.setTime(12, 56, 50);     // Set the time to 12:00:00 (24hr format)
   rtc.setDate(26, 4, 2017);   // Set the date to August 6th, 2010
+  */
 }
 
 void loop()
@@ -42,7 +36,4 @@ void loop()
 
   // Send time
   Serial.println(rtc.getTimeStr());
-  
-  // Wait one second before repeating :)
-  delay (1000);
 }
