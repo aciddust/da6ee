@@ -12,6 +12,14 @@
 //  WARNING: Don't send more than 1 tweet per minute! (1분에 1개 이상의 트위터를 보내지 마시오)
 //  NOTE: Twitter rejects tweets with identical content as dupes (returns 403)
 */
+
+/*
+// DS1302:  CE pin    -> Arduino Digital 2
+//          I/O pin   -> Arduino Digital 3
+//          SCLK pin  -> Arduino Digital 7
+*/
+
+#include <DS1302.h>
 #include <Servo.h>
 #include <SPI.h>
 #include <EtherCard.h>
@@ -25,6 +33,7 @@
 // tri-coloring LED [Need PWM Control _OR NOT] 
 #define RGB_LED     6
 #define NUMPIXELS   7
+
 // servoMotor [Need PWM Control]
 #define PIN_SERVO   9
 #define PIN_SERVO_2 10
@@ -43,8 +52,12 @@
 const int BH1750_address = 0x23; 
 byte luxBuf[2];
 
-//LED INIT
+//Tri-Coloring LED INIT
 //Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
+
+//RTC Set
+DS1302 rtc(2,3,7);
+
 boolean ledStatus = false;
 boolean waterFeed = false;
 boolean doorOpen = false;
@@ -142,6 +155,10 @@ void setup () {
 // init Servo
   water_servo.attach(PIN_SERVO);
   door_servo.attach(PIN_SERVO_2);
+
+// RTC_ Set the clock to run-mode, and disable the write protection
+  rtc.halt(false);
+  rtc.writeProtect(false);
 
 //Serial Begin..
   Serial.begin(57600);
@@ -324,4 +341,17 @@ void loop () {
 
     ether.httpServerReply(bfill.position());
   }
+
+  /*
+  Serial.print(rtc.getDOWStr());
+  Serial.print(" ");
+  
+  // Send date
+  Serial.print(rtc.getDateStr());
+  Serial.print(" -- ");
+
+  // Send time
+  Serial.println(rtc.getTimeStr());
+  */
+  
 }
