@@ -2,24 +2,25 @@ arduino pin status
 
 13,12,11,8	(Ethernet)_ SCK + MISO + MOSI
 
+10		(SERVO)_ PWM
+
 9		(SERVO)_ PWM
 
 A4, A5		(Lux)_ SDA + SCL
 
 6		(RGB)_ PWM
 
-5		(PANNEL)_ PWM
+4		(FAN)
 
-A0		(Hum) 				__ (?)
-
-7, 4, 2		(RTC)_ CLK + DAT + RST 		__ (?)
+A0		(Hum) 
 
 A2		(Tmp)				__ (?)
 
---------------------------------------------------------
-10 _ SS
-3  _ PWM
+7, 3, 2		(RTC)
 
-10, 3, 1, 0 (Available)
+--------------------------------------------------------
+5  _ PWM
+
+5, 1, 0 (Available)
 A1, A3, A6 (Available)
 
