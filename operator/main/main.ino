@@ -28,11 +28,13 @@
 // servoMotor [Need PWM Control]
 #define PIN_SERVO   9
 #define PIN_SERVO_2 10
+
 // LED_PANNEL [Need PWM Control]
-#define PANNEL      5
-// FAN [true: GO THROUGH / false: REVERSE] _ maybe need motorDriver
-#define FAN_A       4
-#define FAN_B       3
+//#define PANNEL      5
+
+// FAN [Only one way]
+#define FAN         4
+
 // Get Humidity, Celsius
 #define GetHum      A0
 #define GetTmp      A2
@@ -57,6 +59,9 @@ char* DOOR_buttonLabel;
 
 char* WATER_statusLabel;
 char* WATER_buttonLabel;
+
+char* FAN_statusLabel;
+char* FAN_buttonLabel;
 
 char* on = "ON";
 char* off = "OFF";
@@ -125,9 +130,8 @@ void setup () {
 
 // GPIO -set
   pinMode(RGB_LED, OUTPUT);
-  pinMode(PANNEL, OUTPUT);
-  pinMode(FAN_A, OUTPUT);
-  pinMode(FAN_B, OUTPUT);
+  //pinMode(PANNEL, OUTPUT);
+  pinMode(FAN, OUTPUT);
   pinMode(GetHum, INPUT);
   pinMode(GetTmp, INPUT);
   
@@ -236,14 +240,24 @@ void loop () {
       water_servo.write(1);
     }
 
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=ON") != 0) {
+      Serial.println("[FAN]: Received ON command");
+      fanWork = true;
+    }
+
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=OFF") != 0) {
+      Serial.println("[FAN]: Received OFF command");
+      fanWork = false;
+    }
+
     
     
     if(ledStatus) {
-      digitalWrite(6, HIGH);
+      digitalWrite(RGB_LED, HIGH);
       LED_statusLabel = on;
       LED_buttonLabel = off;
     } else {
-      digitalWrite(6, LOW);
+      digitalWrite(RGB_LED, LOW);
       LED_statusLabel = off;
       LED_buttonLabel = on;
     }
@@ -264,6 +278,16 @@ void loop () {
     } else {
       WATER_statusLabel = off;
       WATER_buttonLabel = on;
+    }
+    
+    if(fanWork) {
+      digitalWrite(FAN, HIGH);
+      FAN_statusLabel = on;
+      FAN_buttonLabel = off;
+    } else {
+      digitalWrite(FAN, LOW);
+      FAN_statusLabel = off;
+      FAN_buttonLabel = on;
     }  
    
    
@@ -283,6 +307,8 @@ void loop () {
             "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
           "온실 개방 상태: $S "
             "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
+          "팬 작동 상태: $S "
+            "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"  
           "물 줄까요?? : "
             "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>  <br>"
             "_LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] <br><br>"
@@ -292,6 +318,7 @@ void loop () {
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
+         FAN_statusLabel, FAN_buttonLabel, FAN_buttonLabel,
          WATER_buttonLabel,
          "_조도_","_온도_","_습도_");
 
