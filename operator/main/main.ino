@@ -64,6 +64,8 @@ boolean doorOpen = false;
 boolean fanWork = false;
 boolean dummy = false;
 
+boolean isHeCome = false;
+
 char* LED_statusLabel;
 char* LED_buttonLabel;
 
@@ -331,11 +333,17 @@ void loop () {
       FAN_statusLabel = off;
       FAN_buttonLabel = on;
     }  
+
+////////////////////////////////////////////////////////////////////////////////////
+   //다음 개발은 여기부터. (접속 여부 판단에 따른 물주기나 자동제어 부분)
+    if(!isHeCome){
+      
+    }
+    else{
+      
+    }
+////////////////////////////////////////////////////////////////////////////////////
    
-   
-    if(dummy){;}
-    else{;}
-    
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
       "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
