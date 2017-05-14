@@ -12,14 +12,6 @@
 //  WARNING: Don't send more than 1 tweet per minute! (1분에 1개 이상의 트위터를 보내지 마시오)
 //  NOTE: Twitter rejects tweets with identical content as dupes (returns 403)
 */
-
-/*
-// DS1302:  CE pin    -> Arduino Digital 2
-//          I/O pin   -> Arduino Digital 3
-//          SCLK pin  -> Arduino Digital 7
-*/
-
-#include <DS1302.h>
 #include <Servo.h>
 #include <SPI.h>
 #include <EtherCard.h>
@@ -33,17 +25,14 @@
 // tri-coloring LED [Need PWM Control _OR NOT] 
 #define RGB_LED     6
 #define NUMPIXELS   7
-
 // servoMotor [Need PWM Control]
 #define PIN_SERVO   9
 #define PIN_SERVO_2 10
-
 // LED_PANNEL [Need PWM Control]
-//#define PANNEL      5
-
-// FAN [Only one way]
-#define FAN         4
-
+#define PANNEL      5
+// FAN [true: GO THROUGH / false: REVERSE] _ maybe need motorDriver
+#define FAN_A       4
+#define FAN_B       3
 // Get Humidity, Celsius
 #define GetHum      A0
 #define GetTmp      A2
@@ -52,12 +41,8 @@
 const int BH1750_address = 0x23; 
 byte luxBuf[2];
 
-//Tri-Coloring LED INIT
+//LED INIT
 //Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, RGB_LED, NEO_GRB + NEO_KHZ800);
-
-//RTC Set
-DS1302 rtc(2,3,7);
-
 boolean ledStatus = false;
 boolean waterFeed = false;
 boolean doorOpen = false;
@@ -73,18 +58,10 @@ char* DOOR_buttonLabel;
 char* WATER_statusLabel;
 char* WATER_buttonLabel;
 
-char* FAN_statusLabel;
-char* FAN_buttonLabel;
-
 char* on = "ON";
 char* off = "OFF";
 
 unsigned long prev_time;
-
-char timeData[32]="";
-char luxData[8]="";
-char tmpData[8]="";
-char humData[8]="";
 
 Servo door_servo;  // #define PIN_SERVO    9
 Servo water_servo; // #define PIN_SERVO_2 10
@@ -143,20 +120,14 @@ static void sendToTwitter (const char *tweet) {
   // Save the session ID so we can watch for it in the main loop.
   session = ether.tcpSend();
 }
-
-void getTimeData(void) {
-  memset(timeData, 0, sizeof(timeData));
-  strcat(timeData, rtc.getDOWStr());
-  strcat(timeData, rtc.getDateStr());
-  strcat(timeData, rtc.getTimeStr());
-}
  
 void setup () {
 
 // GPIO -set
   pinMode(RGB_LED, OUTPUT);
-  //pinMode(PANNEL, OUTPUT);
-  pinMode(FAN, OUTPUT);
+  pinMode(PANNEL, OUTPUT);
+  pinMode(FAN_A, OUTPUT);
+  pinMode(FAN_B, OUTPUT);
   pinMode(GetHum, INPUT);
   pinMode(GetTmp, INPUT);
   
@@ -168,13 +139,6 @@ void setup () {
   water_servo.attach(PIN_SERVO);
   door_servo.attach(PIN_SERVO_2);
 
-// RTC_ Set the clock to run-mode, and disable the write protection
-  rtc.halt(false);
-  rtc.writeProtect(false);
-  
-  //init time;
-  getTimeData(); 
-  
 //Serial Begin..
   Serial.begin(57600);
   
@@ -209,12 +173,12 @@ void loop () {
   */
 
   // 조도 측정
-  float lux_read = 0;
+  float valf = 0;
   if(BH1750_Read(BH1750_address)==2){
-    lux_read=((luxBuf[0]<<8)|luxBuf[1])/1.2;
+    valf=((luxBuf[0]<<8)|luxBuf[1])/1.2;
     
-    if(lux_read<0)Serial.print("> 65535");
-    else Serial.print((int)lux_read,DEC); 
+    if(valf<0)Serial.print("> 65535");
+    else Serial.print((int)valf,DEC); 
     
     Serial.println(" lx"); 
   }
@@ -226,15 +190,7 @@ void loop () {
   // float fahrenheittmp= celsiustmp * 9.0/5.0 + 32.0; // 화씨
 
   // 토양 내부 습도 측정
-  float hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
-
-  
-  memset(luxData, 0 , sizeof(luxData));
-  memset(tmpData, 0 , sizeof(tmpData));
-  memset(humData, 0 , sizeof(humData));
-  sprintf(luxData, "%f", lux_read);
-  sprintf(tmpData, "%f", celsiustmp);
-  sprintf(humData, "%f", hum_read);
+  int hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
 
   //웹 페이지 받을 준비
   word len = ether.packetReceive();
@@ -270,8 +226,6 @@ void loop () {
       water_servo.write(120);
       delay(1000);
       water_servo.write(1);
-
-      getTimeData(); 
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
@@ -282,24 +236,14 @@ void loop () {
       water_servo.write(1);
     }
 
-    if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=ON") != 0) {
-      Serial.println("[FAN]: Received ON command");
-      fanWork = true;
-    }
-
-    if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=OFF") != 0) {
-      Serial.println("[FAN]: Received OFF command");
-      fanWork = false;
-    }
-
     
     
     if(ledStatus) {
-      digitalWrite(RGB_LED, HIGH);
+      digitalWrite(6, HIGH);
       LED_statusLabel = on;
       LED_buttonLabel = off;
     } else {
-      digitalWrite(RGB_LED, LOW);
+      digitalWrite(6, LOW);
       LED_statusLabel = off;
       LED_buttonLabel = on;
     }
@@ -320,16 +264,6 @@ void loop () {
     } else {
       WATER_statusLabel = off;
       WATER_buttonLabel = on;
-    }
-    
-    if(fanWork) {
-      digitalWrite(FAN, HIGH);
-      FAN_statusLabel = on;
-      FAN_buttonLabel = off;
-    } else {
-      digitalWrite(FAN, LOW);
-      FAN_statusLabel = off;
-      FAN_buttonLabel = on;
     }  
    
    
@@ -349,24 +283,18 @@ void loop () {
             "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
           "온실 개방 상태: $S "
             "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
-          "팬 작동 상태: $S "
-            "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"  
           "물 줄까요?? : "
             "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>  <br>"
-            "_LAST TIME : $S <br><br>"
+            "_LAST TIME : [_RTC 장착 이후 마지막 물준 시간 기록예정_] <br><br>"
           "주변 환경 : <br>"
             "조도 : $S &nbsp&nbsp 온도 : $S &nbsp&nbsp <br><br>"
           "화분 내부 토양 습도 : $S<br>"
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
-         FAN_statusLabel, FAN_buttonLabel, FAN_buttonLabel,
-         WATER_buttonLabel, timeData,
-         luxData, tmpData, humData);
+         WATER_buttonLabel,
+         "_조도_","_온도_","_습도_");
 
     ether.httpServerReply(bfill.position());
   }
-
- 
-  
 }
