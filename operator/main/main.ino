@@ -36,7 +36,7 @@
 
 // servoMotor [Need PWM Control]
 #define PIN_SERVO   9
-#define PIN_SERVO_2 10
+//#define PIN_SERVO_2 10
 
 // LED_PANNEL [Need PWM Control]
 //#define PANNEL      5
@@ -60,7 +60,7 @@ DS1302 rtc(2,3,7);
 
 boolean ledStatus = false;
 boolean waterFeed = false;
-boolean doorOpen = false;
+//boolean doorOpen = false;
 boolean fanWork = false;
 boolean dummy = false;
 
@@ -69,8 +69,10 @@ boolean isHeCome = false;
 char* LED_statusLabel;
 char* LED_buttonLabel;
 
+/*
 char* DOOR_statusLabel;
 char* DOOR_buttonLabel;
+*/
 
 char* WATER_statusLabel;
 char* WATER_buttonLabel;
@@ -98,7 +100,7 @@ byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
  
 const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
-byte Ethernet::buffer[500];
+byte Ethernet::buffer[600];
 Stash stash;
 
 void BH1750_Init(int address){
@@ -168,7 +170,7 @@ void setup () {
 
 // init Servo
   water_servo.attach(PIN_SERVO);
-  door_servo.attach(PIN_SERVO_2);
+//  door_servo.attach(PIN_SERVO_2);
 
 // RTC_ Set the clock to run-mode, and disable the write protection
   rtc.halt(false);
@@ -255,7 +257,7 @@ void loop () {
       Serial.println("[LIGHT]: Received OFF command");
       ledStatus = false;
     }
-
+/*
     if(strstr((char *)Ethernet::buffer + pos, "GET /?door=ON") != 0) {
       Serial.println("[DOOR]: Received ON command");
       doorOpen = true;
@@ -265,7 +267,7 @@ void loop () {
       Serial.println("[DOOR]: Received OFF command");
       doorOpen = false;
     }
-
+*/
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
       Serial.println("[WATER]: Received ON command");
       waterFeed = true;
@@ -304,16 +306,6 @@ void loop () {
       digitalWrite(RGB_LED, LOW);
       LED_statusLabel = off;
       LED_buttonLabel = on;
-    }
-
-    if(doorOpen) {
-      door_servo.write(120);
-      DOOR_statusLabel = on;
-      DOOR_buttonLabel = off;
-    } else {
-      door_servo.write(1);
-      DOOR_statusLabel = off;
-      DOOR_buttonLabel = on;
     }
 
     if(waterFeed) {
@@ -355,8 +347,6 @@ void loop () {
         "<body>"
           "내부 조명: $S"
             "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a><br>"
-          "온실 개방: $S"
-            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a><br>"
           "팬 작동: $S "
             "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a><br>"  
           "물??: "
@@ -366,12 +356,10 @@ void loop () {
             "조도: $S<br>온도: $S<br>화분습도: $S<br>"
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
-         DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
          FAN_statusLabel, FAN_buttonLabel, FAN_buttonLabel,
          WATER_buttonLabel, timeData,
          luxData, tmpData, humData);
 
     ether.httpServerReply(bfill.position());
   }
-
 }
