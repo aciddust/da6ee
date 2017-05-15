@@ -83,10 +83,10 @@ char* off = "OFF";
 
 unsigned long prev_time;
 
-char timeData[32]="";
-char luxData[8]="";
-char tmpData[8]="";
-char humData[8]="";
+char timeData[20]="";
+char luxData[4]="";
+char tmpData[4]="";
+char humData[4]="";
 
 Servo door_servo;  // #define PIN_SERVO    9
 Servo water_servo; // #define PIN_SERVO_2 10
@@ -98,7 +98,7 @@ byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
  
 const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
-byte Ethernet::buffer[700];
+byte Ethernet::buffer[500];
 Stash stash;
 
 void BH1750_Init(int address){
@@ -346,25 +346,24 @@ void loop () {
    
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
-      "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n"
+      "Content-Type:text/html\r\nPragma:no-cache\r\n\r\n"
       "<html>"
         "<head>"
           "<meta charset=\"utf-8\">"
           "<title>Da6eE</title>"
         "</head>"
         "<body>"
-          "내부 조명 상태 : $S "
-            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
-          "온실 개방 상태: $S "
-            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"
-          "팬 작동 상태: $S "
-            "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a> <br><br>"  
-          "물 줄까요?? : "
-            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>  <br>"
-            "_LAST TIME : $S <br><br>"
-          "주변 환경 : <br>"
-            "조도 : $S &nbsp&nbsp 온도 : $S &nbsp&nbsp <br><br>"
-          "화분 내부 토양 습도 : $S<br>"
+          "내부 조명: $S"
+            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a><br>"
+          "온실 개방: $S"
+            "<a href=\"/?door=$S\"><input type=\"button\" value=\"$S\"></a><br>"
+          "팬 작동: $S "
+            "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a><br>"  
+          "물??: "
+            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a><br>"
+            "LAST TIME: $S<br><br>"
+          "주변환경:<br>"
+            "조도: $S<br>온도: $S<br>화분습도: $S<br>"
             "</body></html>"            
       ), LED_statusLabel, LED_buttonLabel, LED_buttonLabel,
          DOOR_statusLabel, DOOR_buttonLabel, DOOR_buttonLabel,
@@ -375,6 +374,4 @@ void loop () {
     ether.httpServerReply(bfill.position());
   }
 
- 
-  
 }
