@@ -108,22 +108,26 @@ void loop () {
   if(BH1750_Read(BH1750_address)==2){
     valf=((luxBuf[0]<<8)|luxBuf[1])/1.2;
 
-    /*
+    Serial.print("lux: ");
     if(valf<0)Serial.print("> 65535");
     else Serial.print((int)valf,DEC); 
+    Serial.print("   ");
     
-    Serial.println(" lx"); 
-    */
   }
 
   // 온도 측정 (섭씨기준)
   int tmp_read = analogRead(GetTmp);
-  float tmp_vcc = tmp_read * 5.0 / 1024.0;
-  float celsiustmp = (tmp_vcc - 0.5) * 100 ; 
-  // float fahrenheittmp= celsiustmp * 9.0/5.0 + 32.0; // 화씨
+  float tmp_vcc = tmp_read * 10.0 / 1024.0;
+  //float celsiustmp = (tmp_vcc - 0.5) * 100 ; 
+  float celsiustmp = tmp_vcc*26;
+
+  Serial.print("cel : ");
+  Serial.print(celsiustmp);
 
   // 토양 내부 습도 측정
   int hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
+  Serial.print("   hum : ");
+  Serial.println(hum_read);
 
   //웹 페이지 받을 준비
   word len = ether.packetReceive();
@@ -227,4 +231,5 @@ void loop () {
 
     ether.httpServerReply(bfill.position());
   }
+  delay(200);
 }
