@@ -50,9 +50,9 @@ char* hum_statusLabel;
 char* on = "ON";
 char* off = "OFF";
 
-char* bad = "BAD";
-char* good = "OK";
-char* ok = "GREAT";
+char* RED = "#FF7676";
+char* YEL = "#FFFF67";
+char* GRN = "#9AFF9E";
 
 //unsigned long prev_time;
 
@@ -70,12 +70,18 @@ byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
  
 const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
-byte Ethernet::buffer[650];
+byte Ethernet::buffer[850];
 //Stash stash;
 
 //Chk watering Time
 unsigned long prev_time=0;
 unsigned long current_time=0;
+
+//Sensors;
+float lux_read = 0;
+float tmp_vcc = 0;
+float celsiustmp = 0;
+float hum_read = 0;
 
 void BH1750_Init(int address){
   
@@ -101,6 +107,29 @@ void getTimeData(void) {
   memset(timeData, 0, sizeof(timeData));
   //strcat(timeData, rtc.getDateStr());
   strcat(timeData, rtc.getTimeStr());
+}
+
+void chk_ENV_Status(void){
+  if(lux_read > 300)
+      lux_statusLabel = GRN;
+    else if(lux_read > 165)
+      lux_statusLabel = YEL;
+    else
+      lux_statusLabel = RED;
+    
+    if(celsiustmp > 32)
+      tmp_statusLabel = RED;
+    else if(celsiustmp > 25)
+      tmp_statusLabel = YEL;
+    else
+      tmp_statusLabel = GRN;  
+    
+    if(hum_read > 650)
+      hum_statusLabel = GRN;
+    else if(hum_read > 350)
+      hum_statusLabel = YEL;
+    else 
+      hum_statusLabel = RED;
 }
  
 void setup () {
@@ -150,19 +179,17 @@ void setup () {
 void loop () {
     
   // 조도 측정
-  float lux_read = 0;
   if(BH1750_Read(BH1750_address)==2){
     lux_read=((luxBuf[0]<<8)|luxBuf[1])/1.2;
   }
   
   // 온도 측정 (섭씨기준)
-  int tmp_read = analogRead(GetTmp);
-  float tmp_vcc = tmp_read * 5.0 / 1024.0;
-  float celsiustmp = (tmp_vcc - 0.5) * 100 ; 
+  tmp_vcc = (int)analogRead(GetTmp) * 5.0 / 1024.0;
+  celsiustmp = (tmp_vcc - 0.5) * 100 ; 
   // float fahrenheittmp= celsiustmp * 9.0/5.0 + 32.0; // 화씨
   
   // 토양 내부 습도 측정
-  float hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
+  hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
 
   memset(luxData, 0 , sizeof(luxData));
   memset(tmpData, 0 , sizeof(tmpData));
@@ -247,6 +274,8 @@ void loop () {
       FAN_buttonLabel = on;
     }  
 
+    chk_ENV_Status( );
+    //Serial.println(lux_statusLabel);
 ////////////////////////////////////////////////////////////////////////////////////
    //다음 개발은 여기부터. (접속 여부 판단에 따른 물주기나 자동제어 부분)
     if(!isHeCome){
@@ -265,21 +294,29 @@ void loop () {
           "<meta http-equiv=\"refresh\" content=\"2\" charset=\"utf-8\">"
           "<title>Da6eE</title>"
         "</head>"
-        "<body>"
-          "내부 조명: "
-            "<a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a><br>"
-          "팬 작동:  "
-            "<a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a><br>"  
-          "물??: "
-            "<a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a><br>"
-            "LAST TIME: $S<br><br>"
-          "주변환경:<br>"
-            "조도: $S<br>온도: $S<br>화분습도: $S<br>"
-            "</body></html>"            
+        "<body>"   
+          "뭐 해줄까?<br>"   
+          "<table>"
+            "<tr><th>내부조명</th><th><a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a></th></tr>"
+            "<tr><th>팬작동</th><th><a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a></th></tr>"
+            "<tr><th>물?</th><th><a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a></th></tr>"
+            "<tr><th>언제 줬니?</th><th>$S</th></tr>"
+          "</table>"
+          "<br>주변환경:<br>"
+          "<table>"
+            "<tr><th>조도</th><th bgcolor=$S>$S</th></tr>"
+            "<tr><th>온도</th><th bgcolor=$S>$S</th></tr>"
+            "<tr><th>습도</th><th bgcolor=$S>$S</th></tr>"
+          "</table>"
+        "</body>"
+      "</html>"            
       ), LED_buttonLabel, LED_buttonLabel,
          FAN_buttonLabel, FAN_buttonLabel,
          WATER_buttonLabel, timeData,
-         luxData, tmpData, humData);
+         
+         lux_statusLabel, luxData,
+         tmp_statusLabel, tmpData,
+         hum_statusLabel, humData);
 
     ether.httpServerReply(bfill.position());
 
