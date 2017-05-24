@@ -43,15 +43,23 @@ char* WATER_buttonLabel;
 char* FAN_statusLabel;
 char* FAN_buttonLabel;
 
+char* tmp_statusLabel;
+char* lux_statusLabel;
+char* hum_statusLabel;
+
 char* on = "ON";
 char* off = "OFF";
+
+char* bad = "BAD";
+char* good = "OK";
+char* ok = "GREAT";
 
 //unsigned long prev_time;
 
 char timeData[32]="";
-char luxData[4]="";
-char tmpData[4]="";
-char humData[4]="";
+char luxData[8]="";
+char tmpData[8]="";
+char humData[8]="";
 
 Servo water_servo; // #define PIN_SERVO 9
 
@@ -64,6 +72,10 @@ const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
 byte Ethernet::buffer[650];
 //Stash stash;
+
+//Chk watering Time
+unsigned long prev_time=0;
+unsigned long current_time=0;
 
 void BH1750_Init(int address){
   
@@ -87,8 +99,7 @@ byte BH1750_Read(int address){
  
 void getTimeData(void) {
   memset(timeData, 0, sizeof(timeData));
-  strcat(timeData, rtc.getDOWStr());
-  strcat(timeData, rtc.getDateStr());
+  //strcat(timeData, rtc.getDateStr());
   strcat(timeData, rtc.getTimeStr());
 }
  
@@ -137,82 +148,76 @@ void setup () {
 }
  
 void loop () {
-
+    
   // 조도 측정
   float lux_read = 0;
   if(BH1750_Read(BH1750_address)==2){
     lux_read=((luxBuf[0]<<8)|luxBuf[1])/1.2;
-    
-    if(lux_read<0)Serial.print("> 65535");
-    else Serial.print((int)lux_read,DEC); 
-    
-    Serial.println(" lx"); 
   }
-
+  
   // 온도 측정 (섭씨기준)
   int tmp_read = analogRead(GetTmp);
   float tmp_vcc = tmp_read * 5.0 / 1024.0;
   float celsiustmp = (tmp_vcc - 0.5) * 100 ; 
   // float fahrenheittmp= celsiustmp * 9.0/5.0 + 32.0; // 화씨
-
+  
   // 토양 내부 습도 측정
   float hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
 
-  
   memset(luxData, 0 , sizeof(luxData));
   memset(tmpData, 0 , sizeof(tmpData));
   memset(humData, 0 , sizeof(humData));
-  sprintf(luxData, "%f", lux_read);
-  sprintf(tmpData, "%f", celsiustmp);
-  sprintf(humData, "%f", hum_read);
-
+ 
+  dtostrf(celsiustmp, 7, 2, tmpData);
+  dtostrf(hum_read, 7, 2, humData);
+  dtostrf(lux_read, 7, 2, luxData);
+    
   //웹 페이지 받을 준비
   word len = ether.packetReceive();
   word pos = ether.packetLoop(len);
-
-  unsigned long prev_time=0;
-  unsigned long current_time;
-  if(pos) {
-    
+ 
+  if(pos) {    
     if(strstr((char *)Ethernet::buffer + pos, "GET /?light=ON") != 0) {
-      Serial.println("[LIGHT]: Received ON command");
+      //Serial.println("[LIGHT]: Received ON command");
       ledStatus = true;
     }
 
-    if(strstr((char *)Ethernet::buffer + pos, "GET /?light=OFF") != 0) {
-      Serial.println("[LIGHT]: Received OFF command");
+    else if(strstr((char *)Ethernet::buffer + pos, "GET /?light=OFF") != 0) {
+      //Serial.println("[LIGHT]: Received OFF command");
       ledStatus = false;
     }
-
+    
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
-      Serial.println("[WATER]: Received ON command");
+      //Serial.println("[WATER]: Received ON command");
+      
+      current_time = millis();
+      
       waterFeed = true;
-      water_servo.write(120);
-      delay(1000);
-      water_servo.write(1);
+      water_servo.write(120); 
 
       getTimeData(); 
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
-      Serial.println("[WATER]: Received OFF command");
+      //Serial.println("[WATER]: Received OFF command");
+
+      current_time = millis();
+      
       waterFeed = false;
       water_servo.write(120);
-      delay(1000);
-      water_servo.write(1);
-    }
 
+      getTimeData();
+    }
+    
     if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=ON") != 0) {
-      Serial.println("[FAN]: Received ON command");
+      //Serial.println("[FAN]: Received ON command");
       fanWork = true;
     }
 
     if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=OFF") != 0) {
-      Serial.println("[FAN]: Received OFF command");
+      //Serial.println("[FAN]: Received OFF command");
       fanWork = false;
     }
-
-    
     
     if(ledStatus) {
       digitalWrite(LED_B, HIGH);
@@ -257,7 +262,7 @@ void loop () {
       "Content-Type:text/html\r\nPragma:no-cache\r\n\r\n"
       "<html>"
         "<head>"
-          "<meta charset=\"utf-8\">"
+          "<meta http-equiv=\"refresh\" content=\"2\" charset=\"utf-8\">"
           "<title>Da6eE</title>"
         "</head>"
         "<body>"
@@ -277,5 +282,11 @@ void loop () {
          luxData, tmpData, humData);
 
     ether.httpServerReply(bfill.position());
+
+    if(current_time - prev_time > 2000) {
+        water_servo.write(1); 
+        prev_time = current_time;
+    }
   }
+  delay(1);
 }
