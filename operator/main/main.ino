@@ -17,6 +17,7 @@
 #define GetHum      A2
 #define GetTmp      A7
 
+// RTC
 #define SCK_PIN     7
 #define IO_PIN      3
 #define RST_PIN     2
@@ -25,49 +26,49 @@
 const int BH1750_address = 0x23; 
 byte luxBuf[2];
 
-//RTC Set
-DS1302 rtc(RST_PIN, IO_PIN, SCK_PIN);
-
+// Actuator Status
 boolean ledStatus = false;
 boolean waterFeed = false;
 boolean fanWork = false;
 
-boolean isHeCome = false;
-
+// Actuator Status on WebPage
 char* LED_statusLabel;
 char* LED_buttonLabel;
-
 char* WATER_statusLabel;
 char* WATER_buttonLabel;
-
 char* FAN_statusLabel;
 char* FAN_buttonLabel;
 
+// Sensor Status on WebPage
 char* tmp_statusLabel;
 char* lux_statusLabel;
 char* hum_statusLabel;
 
+// is Client come?
+boolean isHeCome = false;
+
+// Status Characters
 char* on = "ON";
 char* off = "OFF";
-
 char* RED = "#FF7676";
 char* YEL = "#FFFF67";
 char* GRN = "#9AFF9E";
 
-//unsigned long prev_time;
-
+// Status Buffer
 char timeData[32]="";
 char luxData[8]="";
 char tmpData[8]="";
 char humData[8]="";
 
+DS1302 rtc(RST_PIN, IO_PIN, SCK_PIN);
 Servo water_servo; // #define PIN_SERVO 9
 
 int pos = 0;
 
 // ethernet interface mac address, must be unique on the LAN
 byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
- 
+
+//[FOR LOOKUP DNS] [session] [to use buffer on web]
 const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
 byte Ethernet::buffer[850];
@@ -77,21 +78,21 @@ byte Ethernet::buffer[850];
 unsigned long prev_time=0;
 unsigned long current_time=0;
 
-//Sensors;
+//Sensor datas;
 float lux_read = 0;
 float tmp_vcc = 0;
 float celsiustmp = 0;
 float hum_read = 0;
 
-void BH1750_Init(int address){
-  
+//LUX INIT
+void BH1750_Init(int address){  
   Wire.beginTransmission(address);
   Wire.write(0x10); // 1 [lux] aufloesung
   Wire.endTransmission();
 }
 
+//GET LUX
 byte BH1750_Read(int address){
-  
   byte i=0;
   Wire.beginTransmission(address);
   Wire.requestFrom(address, 2);
@@ -102,13 +103,15 @@ byte BH1750_Read(int address){
   Wire.endTransmission();  
   return i;
 }
- 
+
+//GET TIME, NOW
 void getTimeData(void) {
   memset(timeData, 0, sizeof(timeData));
   //strcat(timeData, rtc.getDateStr());
   strcat(timeData, rtc.getTimeStr());
 }
 
+//Check Environment 
 void chk_ENV_Status(void){
   if(lux_read > 300)
       lux_statusLabel = GRN;
@@ -131,7 +134,7 @@ void chk_ENV_Status(void){
     else 
       hum_statusLabel = RED;
 }
- 
+
 void setup () {
 
 // GPIO -set
@@ -191,10 +194,10 @@ void loop () {
   // 토양 내부 습도 측정
   hum_read = analogRead(GetHum); // 센서 감도는 알아서 조절
 
+  // SENSOR DATAS - buffer set 0 + [float to char]
   memset(luxData, 0 , sizeof(luxData));
   memset(tmpData, 0 , sizeof(tmpData));
   memset(humData, 0 , sizeof(humData));
- 
   dtostrf(celsiustmp, 7, 2, tmpData);
   dtostrf(hum_read, 7, 2, humData);
   dtostrf(lux_read, 7, 2, luxData);
@@ -275,7 +278,7 @@ void loop () {
     }  
 
     chk_ENV_Status( );
-    //Serial.println(lux_statusLabel);
+ 
 ////////////////////////////////////////////////////////////////////////////////////
    //다음 개발은 여기부터. (접속 여부 판단에 따른 물주기나 자동제어 부분)
     if(!isHeCome){
@@ -320,6 +323,7 @@ void loop () {
 
     ether.httpServerReply(bfill.position());
 
+    //WATER_SERVO TURN BACK, AFTER '2' Sec(s)
     if(current_time - prev_time > 2000) {
         water_servo.write(1); 
         prev_time = current_time;
