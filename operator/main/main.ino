@@ -135,6 +135,8 @@ void chk_ENV_Status(void){
       hum_statusLabel = RED;
 }
 
+
+
 void setup () {
 
 // GPIO -set
@@ -157,7 +159,7 @@ void setup () {
 //init time;
   getTimeData(); 
   
-//Serial Begin..
+//Serial Begin.. (# Ethernet Module works on 57600 speed)
   Serial.begin(57600);
   
 //twitter -set  
@@ -279,15 +281,52 @@ void loop () {
 
     chk_ENV_Status( );
  
-////////////////////////////////////////////////////////////////////////////////////
-   //다음 개발은 여기부터. (접속 여부 판단에 따른 물주기나 자동제어 부분)
-    if(!isHeCome){
-      
+
+/////////////온실이 알아서 화분을 관리하는 부분////////////////////////////////////////////////
+// non-tested code ////////////////////////////////////////////////////////////////////////////   
+    if(!isHeCome) { // 사용자가 장시간 접속하지 않음
+      if(lux_read <165) {
+        ledStatus = true;
+        LED_statusLabel = on;
+        LED_buttonLabel = off;
+        digitalWrite(LED_B, HIGH);
+      }
+      else {
+        ledStatus = false;
+        LED_statusLabel = off;
+        LED_buttonLabel = on;
+        digitalWrite(LED_B, LOW);  
+      }
+      if(celsiustmp > 25) {
+        fanWork = true;
+        FAN_statusLabel = on;
+        FAN_buttonLabel = off;
+        digitalWrite(FAN, HIGH);
+      }
+      else {
+        fanWork = false;
+        FAN_statusLabel = off;
+        FAN_buttonLabel = on;
+        digitalWrite(FAN, LOW);
+      }
+      if(hum_read < 350) {
+        waterFeed = true;
+        WATER_statusLabel = on;
+        WATER_buttonLabel = off;
+        water_servo.write(120);
+      }
+      else {
+        waterFeed = false;
+        WATER_statusLabel = off;
+        WATER_buttonLabel = on;
+        water_servo.write(1);
+      } 
     }
     else{
-      
+     ; 
     }
-////////////////////////////////////////////////////////////////////////////////////
+// /////////////// //////////////////////////////////////////////////////////////////////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
    
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
