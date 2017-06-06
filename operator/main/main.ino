@@ -31,6 +31,9 @@ boolean ledStatus = false;
 boolean waterFeed = false;
 boolean fanWork = false;
 
+// Auto
+boolean autoWork = false;
+
 // Actuator Status on WebPage
 char* LED_statusLabel;
 char* LED_buttonLabel;
@@ -38,14 +41,13 @@ char* WATER_statusLabel;
 char* WATER_buttonLabel;
 char* FAN_statusLabel;
 char* FAN_buttonLabel;
+char* AUTO_buttonLabel;
+char* AUTO_statusLabel;
 
 // Sensor Status on WebPage
 char* tmp_statusLabel;
 char* lux_statusLabel;
 char* hum_statusLabel;
-
-// is Client come?
-boolean isHeCome = false;
 
 // Status Characters
 char* on = "ON";
@@ -55,7 +57,7 @@ char* YEL = "#FFFF67";
 char* GRN = "#9AFF9E";
 
 // Status Buffer
-char timeData[32]="";
+char timeData[16]="";
 char luxData[8]="";
 char tmpData[8]="";
 char humData[8]="";
@@ -71,12 +73,15 @@ byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x63 };
 //[FOR LOOKUP DNS] [session] [to use buffer on web]
 const char website[] PROGMEM = "arduino-tweet.appspot.com";
 static byte session;
-byte Ethernet::buffer[850];
+byte Ethernet::buffer[760];
 //Stash stash;
 
 //Chk watering Time
 unsigned long prev_time=0;
 unsigned long current_time=0;
+
+unsigned long used_prev= 0;
+unsigned long used_current=0;
 
 //Sensor datas;
 float lux_read = 0;
@@ -113,29 +118,27 @@ void getTimeData(void) {
 
 //Check Environment 
 void chk_ENV_Status(void){
-  if(lux_read > 300)
-      lux_statusLabel = GRN;
-    else if(lux_read > 165)
-      lux_statusLabel = YEL;
-    else
-      lux_statusLabel = RED;
+  if(lux_read >= 400)
+    lux_statusLabel = GRN;
+  else if(lux_read > 250)
+    lux_statusLabel = YEL;
+  else
+    lux_statusLabel = RED;
     
-    if(celsiustmp > 32)
-      tmp_statusLabel = RED;
-    else if(celsiustmp > 25)
-      tmp_statusLabel = YEL;
-    else
-      tmp_statusLabel = GRN;  
+  if(celsiustmp >= 32)
+    tmp_statusLabel = RED;
+  else if(celsiustmp >= 25)
+    tmp_statusLabel = YEL;
+  else
+    tmp_statusLabel = GRN;  
     
-    if(hum_read > 650)
-      hum_statusLabel = GRN;
-    else if(hum_read > 350)
-      hum_statusLabel = YEL;
-    else 
-      hum_statusLabel = RED;
+  if(hum_read > 650)
+    hum_statusLabel = GRN;
+  else if(hum_read > 350)
+    hum_statusLabel = YEL;
+  else 
+    hum_statusLabel = RED;
 }
-
-
 
 void setup () {
 
@@ -207,8 +210,11 @@ void loop () {
   //웹 페이지 받을 준비
   word len = ether.packetReceive();
   word pos = ether.packetLoop(len);
- 
+  
   if(pos) {    
+
+    used_prev = millis();
+      
     if(strstr((char *)Ethernet::buffer + pos, "GET /?light=ON") != 0) {
       //Serial.println("[LIGHT]: Received ON command");
       ledStatus = true;
@@ -221,20 +227,16 @@ void loop () {
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=ON") != 0) {
       //Serial.println("[WATER]: Received ON command");
-      
       current_time = millis();
-      
       waterFeed = true;
       water_servo.write(120); 
-
+      
       getTimeData(); 
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
       //Serial.println("[WATER]: Received OFF command");
-
       current_time = millis();
-      
       waterFeed = false;
       water_servo.write(120);
 
@@ -250,6 +252,18 @@ void loop () {
       //Serial.println("[FAN]: Received OFF command");
       fanWork = false;
     }
+
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?auto=ON") != 0) {
+      //Serial.println("[FAN]: Received OFF command");
+      autoWork = true;
+    }
+
+    //??
+    if(strstr((char *)Ethernet::buffer + pos, "GET /?auto=OFF") != 0) {
+      //Serial.println("[FAN]: Received OFF command");
+      autoWork = false;
+    }
+    
     
     if(ledStatus) {
       digitalWrite(LED_B, HIGH);
@@ -277,26 +291,28 @@ void loop () {
       digitalWrite(FAN, LOW);
       FAN_statusLabel = off;
       FAN_buttonLabel = on;
-    }  
+    }
 
-    chk_ENV_Status( );
- 
+//auto
+    if(autoWork) {
+     AUTO_statusLabel = on;
+     AUTO_buttonLabel = off;
 
-/////////////온실이 알아서 화분을 관리하는 부분////////////////////////////////////////////////
-// non-tested code ////////////////////////////////////////////////////////////////////////////   
-    if(!isHeCome) { // 사용자가 장시간 접속하지 않음
-      if(lux_read <165) {
+      if(lux_read <400) {
+        Serial.println("LED_ON");
         ledStatus = true;
         LED_statusLabel = on;
         LED_buttonLabel = off;
         digitalWrite(LED_B, HIGH);
       }
       else {
+        Serial.println("LED_OFF");
         ledStatus = false;
         LED_statusLabel = off;
         LED_buttonLabel = on;
         digitalWrite(LED_B, LOW);  
       }
+
       if(celsiustmp > 25) {
         fanWork = true;
         FAN_statusLabel = on;
@@ -320,14 +336,12 @@ void loop () {
         WATER_statusLabel = off;
         WATER_buttonLabel = on;
         water_servo.write(1);
-      } 
+      }
+    } else {
+     AUTO_statusLabel = off;
+     AUTO_buttonLabel = on; 
     }
-    else{
-     ; 
-    }
-// /////////////// //////////////////////////////////////////////////////////////////////////// 
-///////////////////////////////////////////////////////////////////////////////////////////////
-   
+//
     BufferFiller bfill = ether.tcpOffset();
     bfill.emit_p(PSTR("HTTP/1.0 200 OK\r\n"
       "Content-Type:text/html\r\nPragma:no-cache\r\n\r\n"
@@ -337,19 +351,16 @@ void loop () {
           "<title>Da6eE</title>"
         "</head>"
         "<body>"   
-          "뭐 해줄까?<br>"   
+            "LED: <a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a><br>"
+            "FAN: <a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a><br>"
+            "WATER: <a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>""last?: $S<br>"
+          "<br>Environment:<br>"
           "<table>"
-            "<tr><th>내부조명</th><th><a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a></th></tr>"
-            "<tr><th>팬작동</th><th><a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a></th></tr>"
-            "<tr><th>물?</th><th><a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a></th></tr>"
-            "<tr><th>언제 줬니?</th><th>$S</th></tr>"
+            "<tr><th>lux</th><th bgcolor=$S>$S</th></tr>"
+            "<tr><th>tmp</th><th bgcolor=$S>$S</th></tr>"
+            "<tr><th>hum</th><th bgcolor=$S>$S</th></tr>"
           "</table>"
-          "<br>주변환경:<br>"
-          "<table>"
-            "<tr><th>조도</th><th bgcolor=$S>$S</th></tr>"
-            "<tr><th>온도</th><th bgcolor=$S>$S</th></tr>"
-            "<tr><th>습도</th><th bgcolor=$S>$S</th></tr>"
-          "</table>"
+          "<br>Auto: <a href=\"/?auto=$S\"><input type=\"button\" value=\"$S\"></a>"
         "</body>"
       "</html>"            
       ), LED_buttonLabel, LED_buttonLabel,
@@ -358,15 +369,18 @@ void loop () {
          
          lux_statusLabel, luxData,
          tmp_statusLabel, tmpData,
-         hum_statusLabel, humData);
+         hum_statusLabel, humData,
+         AUTO_buttonLabel, AUTO_buttonLabel );
 
-    ether.httpServerReply(bfill.position());
-
-    //WATER_SERVO TURN BACK, AFTER '2' Sec(s)
-    if(current_time - prev_time > 2000) {
+    ether.httpServerReply(bfill.position());  
+  } 
+  
+  //WATER_SERVO TURN BACK, AFTER '2' Sec(s)
+  if(current_time - prev_time > 2000) {
         water_servo.write(1); 
         prev_time = current_time;
-    }
   }
+  
+  chk_ENV_Status( );
   delay(1);
 }
