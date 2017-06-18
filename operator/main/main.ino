@@ -1,4 +1,3 @@
-#include <DS1302.h>
 #include <Servo.h>
 #include <SPI.h>
 #include <EtherCard.h>
@@ -16,11 +15,6 @@
 // Get Humidity, Celsius
 #define GetHum      A2
 #define GetTmp      A7
-
-// RTC
-#define SCK_PIN     7
-#define IO_PIN      3
-#define RST_PIN     2
 
 // Get Lux
 const int BH1750_address = 0x23; 
@@ -62,7 +56,6 @@ char luxData[8]="";
 char tmpData[8]="";
 char humData[8]="";
 
-DS1302 rtc(RST_PIN, IO_PIN, SCK_PIN);
 Servo water_servo; // #define PIN_SERVO 9
 
 int pos = 0;
@@ -109,13 +102,6 @@ byte BH1750_Read(int address){
   return i;
 }
 
-//GET TIME, NOW
-void getTimeData(void) {
-  memset(timeData, 0, sizeof(timeData));
-  //strcat(timeData, rtc.getDateStr());
-  strcat(timeData, rtc.getTimeStr());
-}
-
 //Check Environment 
 void chk_ENV_Status(void){
   if(lux_read >= 400)
@@ -154,13 +140,6 @@ void setup () {
 
 // init Servo
   water_servo.attach(PIN_SERVO);
-
-// RTC_ Set the clock to run-mode, and disable the write protection
-  rtc.halt(false);
-  rtc.writeProtect(false);
-  
-//init time;
-  getTimeData(); 
   
 //Serial Begin.. (# Ethernet Module works on 57600 speed)
   Serial.begin(57600);
@@ -229,18 +208,14 @@ void loop () {
       //Serial.println("[WATER]: Received ON command");
       current_time = millis();
       waterFeed = true;
-      water_servo.write(120); 
-      
-      getTimeData(); 
+      water_servo.write(1); 
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?water=OFF") != 0) {
       //Serial.println("[WATER]: Received OFF command");
       current_time = millis();
       waterFeed = false;
-      water_servo.write(120);
-
-      getTimeData();
+      water_servo.write(1);
     }
     
     if(strstr((char *)Ethernet::buffer + pos, "GET /?fan=ON") != 0) {
@@ -298,7 +273,7 @@ void loop () {
      AUTO_statusLabel = on;
      AUTO_buttonLabel = off;
 
-      if(lux_read <400) {
+      if(lux_read <450) {
         Serial.println("LED_ON");
         ledStatus = true;
         LED_statusLabel = on;
@@ -313,7 +288,7 @@ void loop () {
         digitalWrite(LED_B, LOW);  
       }
 
-      if(celsiustmp > 25) {
+      if(celsiustmp > 22) {
         fanWork = true;
         FAN_statusLabel = on;
         FAN_buttonLabel = off;
@@ -325,17 +300,17 @@ void loop () {
         FAN_buttonLabel = on;
         digitalWrite(FAN, LOW);
       }
-      if(hum_read < 350) {
+      if(hum_read < 200) {
         waterFeed = true;
         WATER_statusLabel = on;
         WATER_buttonLabel = off;
-        water_servo.write(120);
+        water_servo.write(1);
       }
       else {
         waterFeed = false;
         WATER_statusLabel = off;
         WATER_buttonLabel = on;
-        water_servo.write(1);
+        water_servo.write(100);
       }
     } else {
      AUTO_statusLabel = off;
@@ -353,7 +328,7 @@ void loop () {
         "<body>"   
             "LED: <a href=\"/?light=$S\"><input type=\"button\" value=\"$S\"></a><br>"
             "FAN: <a href=\"/?fan=$S\"><input type=\"button\" value=\"$S\"></a><br>"
-            "WATER: <a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>""last?: $S<br>"
+            "WATER: <a href=\"/?water=$S\"><input type=\"button\" value=\"Feed\"></a>"
           "<br>Environment:<br>"
           "<table>"
             "<tr><th>lux</th><th bgcolor=$S>$S</th></tr>"
@@ -365,7 +340,7 @@ void loop () {
       "</html>"            
       ), LED_buttonLabel, LED_buttonLabel,
          FAN_buttonLabel, FAN_buttonLabel,
-         WATER_buttonLabel, timeData,
+         WATER_buttonLabel,
          
          lux_statusLabel, luxData,
          tmp_statusLabel, tmpData,
@@ -377,7 +352,7 @@ void loop () {
   
   //WATER_SERVO TURN BACK, AFTER '2' Sec(s)
   if(current_time - prev_time > 2000) {
-        water_servo.write(1); 
+        water_servo.write(100); 
         prev_time = current_time;
   }
   
